@@ -1,0 +1,10 @@
+---
+core:
+  num_workers: 100
+inventory:
+  plugin: nornir.plugins.inventory.simple.SimpleInventory
+  options:
+    host_file: "/etc/stockpiler/inventory/hosts.yml"
+    group_file: "/etc/stockpiler/inventory/groups.yml"
+ssh:
+  config_file: "/etc/stockpiler/ssh_config"
