@@ -21,6 +21,8 @@ from urllib.parse import quote_plus
 
 
 from git import Actor, Repo
+from yaml import safe_load
+from yaml.constructor import ConstructorError
 
 
 from nornir import InitNornir
@@ -60,8 +62,29 @@ def main() -> None:
         with importlib.resources.path(package="stockpiler", resource="nornir_conf.yaml") as p:
             config_file = str(p)
 
+    # See if an SSH config file is specified in args or in the config file, order of precedence is:
+    #   First In the inventory: Device -> Group -> Defaults
+    #   Then: Args -> Config File -> Packaged SSH Config File
+    if args.ssh_config_file:
+        ssh_config_file = args.ssh_config_file
+    else:
+        cf_path = pathlib.Path(config_file)
+        if not cf_path.is_file():
+            raise ValueError(f"The provided configuration file {str(cf_path)} is not found.")
+        with cf_path.open() as cf:
+            try:
+                cf_yaml = safe_load(cf)
+            except (ConstructorError, ValueError) as e:
+                raise ValueError(f"Unable to parse the provided config file {str(cf_path)} to YAML: {str(e)}")
+        cf_ssh_config_file = cf_yaml.get("ssh", {}).get("config_file", None)
+        if cf_ssh_config_file is not None:
+            ssh_config_file = cf_ssh_config_file
+        else:
+            with importlib.resources.path(package="stockpiler", resource="ssh_config") as p:
+                ssh_config_file = str(p)
+
     # Initialize our nornir object/inventory
-    norns = InitNornir(config_file=config_file, logging=logging_config)
+    norns = InitNornir(config_file=config_file, logging=logging_config, ssh={"config_file": ssh_config_file})
     logger.info("Reading config file and initializing inventory...")
 
     # Gather credentials:
@@ -132,6 +155,9 @@ def arg_parsing() -> Namespace:
     )
     argparser.add_argument(
         "-c", "--config_file", type=str, help="Provide a config file, default is packaged with this tool."
+    )
+    argparser.add_argument(
+        "--ssh_config_file", type=str, help="Provide an SSH config file, default is packaged with this tool."
     )
     argparser.add_argument(
         "-o", "--output", type=str, help="Provide a directory to output device backups to, default '/opt/stockpiler'"
