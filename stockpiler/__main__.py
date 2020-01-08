@@ -256,7 +256,7 @@ def backup_asa(
     if http_management and proxies is not None:
         http_port_check_ok = True
     elif http_management:
-        http_port_check_ok = task.run(task=tcp_ping, ports=[http_mgmt_port], timeout=1)[0][http_mgmt_port]
+        http_port_check_ok = task.run(task=tcp_ping, ports=[http_mgmt_port], timeout=1).result[http_mgmt_port]
     else:
         http_port_check_ok = False
 
