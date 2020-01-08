@@ -44,10 +44,7 @@ def main() -> None:
     """
     # Parse Arguments
     args = arg_parsing()
-    if args.log_file:
-        log_file = args.log_file
-    else:
-        log_file = "/var/log/stockpiler.log"
+    log_file = args.logging_dir + "stockpiler.log"
     pathlib.Path(log_file).touch()
 
     # Begin Nornir setup
@@ -184,7 +181,12 @@ def arg_parsing() -> Namespace:
         default="INFO",
         help="What level are we logging at",
     )
-    argparser.add_argument("--log_file", type=str, help="output logs to this specified directory.")
+    argparser.add_argument(
+        "--logging_dir",
+        default="/var/log/stockpiler/",
+        type=str,
+        help="output logs to specified directory, default is /var/log/stockpiler/",
+    )
 
     return argparser.parse_args()
 
