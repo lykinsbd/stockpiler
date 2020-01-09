@@ -13,6 +13,7 @@ from argparse import ArgumentParser, Namespace
 import datetime
 import getpass
 import importlib.resources
+import ipaddress
 from logging import getLogger
 import os
 import pathlib
@@ -258,6 +259,16 @@ def backup_asa(
     else:
         http_port_check_ok = False
 
+    # Disable TLS warnings if task.host.hostname is an IP address:
+    try:
+        _ = ipaddress.ip_address(task.host.hostname)
+        import urllib3
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        verify = False
+    except ValueError:
+        verify = True
+
     # Try and backup via HTTPS, fallback to
     while True:
         if http_port_check_ok:
@@ -267,7 +278,7 @@ def backup_asa(
                 "method": "GET",
                 "auth": (task.host.username, task.host.password),
                 "headers": {"User-Agent": "ASDM"},
-                "verify": False,
+                "verify": verify,
                 "proxies": proxies,
             }
             # Save the config on the box
