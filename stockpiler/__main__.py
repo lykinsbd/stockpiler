@@ -21,10 +21,6 @@ from urllib.parse import quote_plus
 
 
 from git import Actor, Repo
-from yaml import safe_load
-from yaml.constructor import ConstructorError
-
-
 from nornir import InitNornir
 from nornir.core import Nornir
 from nornir.core.inventory import ConnectionOptions
@@ -32,6 +28,8 @@ from nornir.core.task import MultiResult, Task
 from nornir.plugins.tasks import files
 from nornir.plugins.tasks.apis import http_method
 from nornir.plugins.tasks.networking import netmiko_save_config, netmiko_send_command, netmiko_send_config, tcp_ping
+from yaml import safe_load
+from yaml.constructor import ConstructorError
 
 
 logger = getLogger("stockpiler")
