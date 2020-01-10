@@ -281,21 +281,24 @@ def backup_asa(
                 "verify": verify,
                 "proxies": proxies,
             }
-            # Save the config on the box
-            task.run(task=http_method, url=url + quote_plus("wr mem"), **asa_http_kwargs)
 
-            # Get a backup
+            # Gather a backup:
             backup_results = task.run(task=http_method, url=url + quote_plus(backup_command), **asa_http_kwargs)
+
+            # Save the config on the box:
+            task.run(task=http_method, url=url + quote_plus("wr mem"), **asa_http_kwargs)
 
             if backup_results[0].response.ok:
                 device_config = backup_results[0].response.text
                 break
 
         logger.error("Failed to backup %s via HTTPS, falling back to SSH", task.host)
-        # Save the config on the box:
-        task.run(task=netmiko_save_config)
+
         # Gather a backup:
         backup_results = task.run(task=netmiko_send_command, command_string=backup_command)
+
+        # Save the config on the box:
+        task.run(task=netmiko_save_config)
 
         device_config = backup_results[0].result
         break
