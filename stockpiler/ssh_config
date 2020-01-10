@@ -1,7 +1,7 @@
 Host *
   Port 22
   ServerAliveInterval 300
-  KexAlgorithms diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+  KexAlgorithms +diffie-hellman-group14-sha1
   ControlMaster auto
   ControlPath ~/.ssh/Controllers/%C
   ControlPersist 10h
