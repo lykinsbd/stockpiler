@@ -315,7 +315,7 @@ def backup_asa(
             backup_info["ssh_mgmt_port"],
             task.host,
         )
-        raise IOError(f"No HTTP or SSH access available for {task.host}")
+        return Result(host=task.host, result=backup_info, changed=False, failed=not backup_info["backup_successful"])
 
     # Attempt backup via HTTPS if port check was OK (and it is configured for https management in inventory)
     if backup_info["http_port_check_ok"]:
