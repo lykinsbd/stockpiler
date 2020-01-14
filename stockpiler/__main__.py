@@ -146,6 +146,9 @@ def main() -> None:
 
         writer.writeheader()
         for host in results.keys():
+            # Don't try to write this if it's not a dict.
+            if not isinstance(results[host][0].result, dict):
+                continue
             writer.writerow(results[host][0].result)
 
     # Git Commit the changed backup files
