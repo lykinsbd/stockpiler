@@ -125,6 +125,7 @@ def backup_cisco_asa(
         ):
             device_config = backup_results[0].response.text
             backup_info["backup_successful"] = True
+            backup_info["http_used"] = True
             logger.debug("Successfully backed up %s", task.host)
 
         # Save the config on the box:
@@ -145,6 +146,7 @@ def backup_cisco_asa(
         if not backup_results[0].failed and "command authorization failed" not in backup_results[0].result.lower():
             device_config = backup_results[0].result
             backup_info["backup_successful"] = True
+            backup_info["ssh_used"] = True
             logger.debug("Successfully backed up %s", task.host)
 
         # Save the config on the box:
