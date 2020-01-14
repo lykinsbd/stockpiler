@@ -10,6 +10,7 @@ Requires Python 3.7 or higher.
 """
 
 from argparse import ArgumentParser, Namespace
+import csv
 import datetime
 import getpass
 import importlib.resources
@@ -18,6 +19,7 @@ from logging import getLogger
 import os
 import pathlib
 import sys
+from typing import Dict, Union
 from urllib.parse import quote_plus
 
 
@@ -25,7 +27,7 @@ from git import Actor, Repo
 from nornir import InitNornir
 from nornir.core import Nornir
 from nornir.core.inventory import ConnectionOptions
-from nornir.core.task import MultiResult, Task
+from nornir.core.task import Result, Task
 from nornir.plugins.tasks import files
 from nornir.plugins.tasks.apis import http_method
 from nornir.plugins.tasks.networking import netmiko_save_config, netmiko_send_command, netmiko_send_config, tcp_ping
@@ -128,13 +130,27 @@ def main() -> None:
         task_kwargs["file_path"] = backup_dir
 
     # Executing backup on devices:
-    print(f"Device work start time: {datetime.datetime.now().isoformat()}")
+    print(f"Device work start time: {datetime.datetime.utcnow().isoformat()}")
     results = target_hosts.run(task=task, **task_kwargs)
-    print(f"Device work end time: {datetime.datetime.now().isoformat()}")
+    print(f"Device work end time: {datetime.datetime.utcnow().isoformat()}")
+
+    # Process our results into a CSV and write it to the backups directory.
+    # print_result(results)
+
+    csv_out = f"{backup_dir}/results.csv"
+    print(f"Putting results into a CSV at { csv_out }")
+    with open(csv_out, "w") as output_file:
+        fieldnames = next(results[x] for x in results)[0].result.keys()
+
+        writer = csv.DictWriter(output_file, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for host in results.keys():
+            writer.writerow(results[host][0].result)
 
     # Git Commit the changed backup files
     repo.git.add(all=True)  # Should be changed to explicitly add all filenames from the results... but that's harder
-    repo.index.commit(message=f"Backup {datetime.datetime.now().isoformat()}", author=author)
+    repo.index.commit(message=f"Backup {datetime.datetime.utcnow().isoformat()}", author=author)
 
     sys.exit()
 
@@ -238,74 +254,139 @@ def filtering(args: Namespace, norns: Nornir) -> Nornir:
 
 def backup_asa(
     task: Task, file_path: pathlib.Path, backup_command: str = "more system:running-config", proxies: dict = None
-) -> MultiResult:
+) -> Result:
     """
     Gather the text configuration from an ASA and write that to a file (overwriting any existing file by that name)
     :param task:
     :param file_path: An instantiated pathlib.Path object for the directory where we're going to write this
     :param backup_command: What command to execute for backup, defaults to `more system:running-config`
     :param proxies: Optional Dict of SOCKS proxies to use for HTTP connectivity
-    :return: Return the Nornir Results of this action
+    :return: Return a Nornir Result object.  The Result.result attribute will contain:
+        A Dict containing information on if backup was successful and what method was used.
+        Example:
+        {
+            "http_mgmt_port": 8443,
+            "http_port_check_ok": True,
+            "ssh_mgmt_port": 22,
+            "ssh_port_check_ok": True,
+            "backup_successful": True,
+            "write_mem_successful": True,
+            "http_used": True,
+            "ssh_used": False,
+            "last_backup_attempt": datetime.datetime.now().isoformat(),
+            "last_successful_backup": None,
+        }
     """
 
-    http_mgmt_port = task.host.get("http_mgmt_port", 8443)
-    http_management = task.host.get("http_management", False)
+    # Dict of our eventual return info, should probably look at turning this into an object.
+    backup_info = {
+        "http_management": task.host.get("http_management", False),
+        "http_mgmt_port": task.host.get("http_mgmt_port", 8443),
+        "http_port_check_ok": False,
+        "ssh_mgmt_port": task.host.get("port", 22) or 22,  # Need `or` statement as we're getting None from inventory
+        "ssh_port_check_ok": False,
+        "backup_successful": False,
+        "write_mem_successful": False,
+        "http_used": False,
+        "ssh_used": False,
+        "last_backup_attempt": datetime.datetime.utcnow().isoformat(),
+        "last_successful_backup": None,
+    }  # type: Dict[str, Union[bool, int, str]]
+    device_config = None
 
     # Check if we are using HTTP and if we can hit TCP port; skip if proxies, the TCP check won't do us any good.
-    if http_management and proxies is not None:
-        http_port_check_ok = True
-    elif http_management:
-        http_port_check_ok = task.run(task=tcp_ping, ports=[http_mgmt_port], timeout=1).result[http_mgmt_port]
-    else:
-        http_port_check_ok = False
+    if backup_info["http_management"] and proxies is not None:
+        backup_info["http_port_check_ok"] = True
+    elif backup_info["http_management"]:
+        backup_info["http_port_check_ok"] = task.run(
+            task=tcp_ping, ports=[backup_info["http_mgmt_port"]], timeout=1
+        ).result[backup_info["http_mgmt_port"]]
 
-    # Disable TLS warnings if task.host.hostname is an IP address:
-    try:
-        _ = ipaddress.ip_address(task.host.hostname)
-        import urllib3
+    # Validate SSH TCP port, in case we need it (as fallback) or if HTTP mgmt disabled:
+    backup_info["ssh_port_check_ok"] = task.run(task=tcp_ping, ports=[backup_info["ssh_mgmt_port"]], timeout=1).result[
+        backup_info["ssh_mgmt_port"]
+    ]
 
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        verify = False
-    except ValueError:
-        verify = True
+    # If we can't hit either port, what are we doing here?  GET TO THE CHOPPA!
+    if not backup_info["http_port_check_ok"] and not backup_info["ssh_port_check_ok"]:
+        logger.error(
+            "Unable to reach either HTTP (%s) or SSH (%s) management ports on %s",
+            backup_info["http_mgmt_port"],
+            backup_info["ssh_mgmt_port"],
+            task.host,
+        )
+        raise IOError(f"No HTTP or SSH access available for {task.host}")
 
-    # Try and backup via HTTPS, fallback to
-    while True:
-        if http_port_check_ok:
-            logger.debug("Attempting to backup %s via HTTPS", task.host)
-            url = "https://{0}:{1}/admin/exec/".format(task.host.hostname, http_mgmt_port)
-            asa_http_kwargs = {
-                "method": "GET",
-                "auth": (task.host.username, task.host.password),
-                "headers": {"User-Agent": "ASDM"},
-                "verify": verify,
-                "proxies": proxies,
-            }
+    # Attempt backup via HTTPS if port check was OK (and it is configured for https management in inventory)
+    if backup_info["http_port_check_ok"]:
+        logger.debug("Attempting to backup %s:%s via HTTPS", task.host, backup_info["http_mgmt_port"])
 
-            # Gather a backup:
-            backup_results = task.run(task=http_method, url=url + quote_plus(backup_command), **asa_http_kwargs)
+        # Disable TLS warnings if task.host.hostname is an IP address:
+        try:
+            _ = ipaddress.ip_address(task.host.hostname)
+            import urllib3
 
-            # Save the config on the box:
-            task.run(task=http_method, url=url + quote_plus("wr mem"), **asa_http_kwargs)
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            verify = False
+        except ValueError:
+            verify = True
 
-            if backup_results[0].response.ok:
-                device_config = backup_results[0].response.text
-                break
+        # Setup Requests options/payload
+        url = f"https://{task.host.hostname}:{backup_info['http_mgmt_port']}/admin/exec/"
+        asa_http_kwargs = {
+            "method": "GET",
+            "auth": (task.host.username, task.host.password),
+            "headers": {"User-Agent": "ASDM"},
+            "verify": verify,
+            "proxies": proxies,
+        }
 
-        logger.error("Failed to backup %s via HTTPS, falling back to SSH", task.host)
+        # Gather a backup:
+        backup_results = task.run(task=http_method, url=url + quote_plus(backup_command), **asa_http_kwargs)
+        if (
+            backup_results[0].response.ok
+            and "command authorization failed" not in backup_results[0].response.text.lower()
+        ):
+            device_config = backup_results[0].response.text
+            backup_info["backup_successful"] = True
+            logger.debug("Successfully backed up %s", task.host)
+
+        # Save the config on the box:
+        wr_mem_results = task.run(task=http_method, url=url + quote_plus("write mem"), **asa_http_kwargs)
+        if (
+            wr_mem_results[0].response.ok
+            and "command authorization failed" not in backup_results[0].response.text.lower()
+        ):
+            backup_info["write_mem_successful"] = True
+            logger.debug("Successfully saved configuration on %s", task.host)
+
+    # Attempt backup via SSH, if HTTPS fails or HTTPS management was not enabled.
+    if not backup_info["backup_successful"] and backup_info["ssh_port_check_ok"]:
+        logger.debug("Attempting to backup %s:%s via SSH", task.host, backup_info["ssh_mgmt_port"])
 
         # Gather a backup:
         backup_results = task.run(task=netmiko_send_command, command_string=backup_command)
+        if not backup_results[0].failed and "command authorization failed" not in backup_results[0].result.lower():
+            device_config = backup_results[0].result
+            backup_info["backup_successful"] = True
+            logger.debug("Successfully backed up %s", task.host)
 
         # Save the config on the box:
-        task.run(task=netmiko_save_config)
+        wr_mem_results = task.run(task=netmiko_save_config)
+        if not wr_mem_results[0].failed and "command authorization failed" not in wr_mem_results[0].result.lower():
+            backup_info["write_mem_successful"] = True
+            logger.debug("Successfully saved configuration on %s", task.host)
 
-        device_config = backup_results[0].result
-        break
+    # Attempt to save the backup if we have one
+    if backup_info["backup_successful"]:
+        backup_info["last_successful_backup"] = datetime.datetime.utcnow().isoformat()
+        file_name = pathlib.Path(file_path / f"{str(task.host)}.txt")
+        task.run(task=files.write_file, filename=str(file_name), content=device_config)
+    else:
+        # If we've failed both backup attempts, log that.
+        logger.error("Failed to backup %s via HTTPS or SSH", task.host)
 
-    file_name = pathlib.Path(file_path / f"{str(task.host)}.txt")
-    result = task.run(task=files.write_file, filename=str(file_name), content=device_config)
-    return result
+    return Result(host=task.host, result=backup_info, changed=False, failed=not backup_info["backup_successful"])
 
 
 if __name__ == "__main__":
