@@ -137,7 +137,7 @@ def main() -> None:
     csv_out = f"{backup_dir}/results.csv"
     print(f"Putting results into a CSV at { csv_out }")
     with open(csv_out, "w") as output_file:
-        fieldnames = next(results[x] for x in results)[0].result.keys()
+        fieldnames = [i for i in next(results[x] for x in results)[0].result.keys() if i not in ["device_config"]]
 
         writer = csv.DictWriter(output_file, fieldnames=fieldnames)
 
@@ -146,7 +146,7 @@ def main() -> None:
             # Don't try to write this if it's not a dict.
             if not isinstance(results[host][0].result, dict):
                 continue
-            writer.writerow(results[host][0].result)
+            writer.writerow({k:v for (k,v) in results[host][0].result.items() if k not in ["device_config"]})
 
     # Git Commit the changed backup files
     repo.git.add(all=True)  # Should be changed to explicitly add all filenames from the results... but that's harder
