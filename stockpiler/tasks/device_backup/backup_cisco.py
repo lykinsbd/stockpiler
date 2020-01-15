@@ -53,7 +53,7 @@ def backup_cisco_asa(
 
     # Dict of our eventual return info, should probably look at turning this into an object.
     backup_info = {
-        "ip": task.host,
+        "ip": task.host.hostname,
         "hostname": task.host.get("device_name", task.host),
         "account_number": task.host.get("account_number", 0),
         "http_management": task.host.get("http_management", False),
