@@ -9,7 +9,6 @@ import datetime
 import ipaddress
 from logging import getLogger
 import pathlib
-from typing import Dict, Union
 from urllib.parse import quote_plus
 
 
@@ -17,6 +16,9 @@ from nornir.core.task import Result, Task
 from nornir.plugins.tasks import files
 from nornir.plugins.tasks.apis import http_method
 from nornir.plugins.tasks.networking import netmiko_save_config, netmiko_send_command, tcp_ping
+
+
+from stockpiler.tasks.device_backup.backup_base import BackupResults
 
 
 logger = getLogger("stockpiler")
@@ -31,8 +33,8 @@ def backup_cisco_asa(
     :param file_path: An instantiated pathlib.Path object for the directory where we're going to write this
     :param backup_command: What command to execute for backup, defaults to `more system:running-config`
     :param proxies: Optional Dict of SOCKS proxies to use for HTTP connectivity
-    :return: Return a Nornir Result object.  The Result.result attribute will contain:
-        A Dict containing information on if backup was successful and what method was used.
+    :return: Return a Nornir Result object.  The Result.result attribute will contain a BackupResults object which is
+        a dict-like object containing information on if backup was successful and what method was used, the config, etc.
         Example:
         {
             "ip": "123.123.123.123",
@@ -43,32 +45,26 @@ def backup_cisco_asa(
             "ssh_mgmt_port": 22,
             "ssh_port_check_ok": True,
             "backup_successful": True,
-            "write_mem_successful": True,
+            "save_config_successful": True,
             "http_used": True,
             "ssh_used": False,
             "last_backup_attempt": datetime.datetime.now().isoformat(),
             "last_successful_backup": None,
+            "device_config": None,
         }
     """
 
     # Dict of our eventual return info, should probably look at turning this into an object.
-    backup_info = {
-        "ip": task.host.hostname,
-        "hostname": task.host.get("device_name", task.host),
-        "account_number": task.host.get("account_number", 0),
-        "http_management": task.host.get("http_management", False),
-        "http_mgmt_port": task.host.get("http_mgmt_port", 8443),
-        "http_port_check_ok": False,
-        "ssh_mgmt_port": task.host.get("port", 22) or 22,  # Need `or` statement as we're getting None from inventory
-        "ssh_port_check_ok": False,
-        "backup_successful": False,
-        "write_mem_successful": False,
-        "http_used": False,
-        "ssh_used": False,
-        "last_backup_attempt": datetime.datetime.utcnow().isoformat(),
-        "last_successful_backup": None,
-    }  # type: Dict[str, Union[bool, int, str]]
-    device_config = None
+    backup_info = BackupResults(
+        name=f"{task.host}_backup",
+        ip=task.host.hostname,
+        hostname=task.host.get("device_name", task.host),
+        http_management=task.host.get("http_management", False),
+        http_mgmt_port=task.host.get("http_mgmt_port", 8443),
+        ssh_mgmt_port=task.host.get("port", 22) or 22,  # Need `or` statement as we're getting None from inventory
+    )
+
+    backup_info["account_number"] = task.host.get("account_number", 0)
 
     # Check if we are using HTTP and if we can hit TCP port; skip if proxies, the TCP check won't do us any good.
     if backup_info["http_management"] and proxies is not None:
@@ -123,7 +119,7 @@ def backup_cisco_asa(
             backup_results[0].response.ok
             and "command authorization failed" not in backup_results[0].response.text.lower()
         ):
-            device_config = backup_results[0].response.text
+            backup_info["device_config"] = backup_results[0].response.text
             backup_info["backup_successful"] = True
             backup_info["http_used"] = True
             logger.debug("Successfully backed up %s", task.host)
@@ -134,7 +130,7 @@ def backup_cisco_asa(
             wr_mem_results[0].response.ok
             and "command authorization failed" not in backup_results[0].response.text.lower()
         ):
-            backup_info["write_mem_successful"] = True
+            backup_info["save_config_successful"] = True
             logger.debug("Successfully saved configuration on %s", task.host)
 
     # Attempt backup via SSH, if HTTPS fails or HTTPS management was not enabled.
@@ -144,7 +140,7 @@ def backup_cisco_asa(
         # Gather a backup:
         backup_results = task.run(task=netmiko_send_command, command_string=backup_command)
         if not backup_results[0].failed and "command authorization failed" not in backup_results[0].result.lower():
-            device_config = backup_results[0].result
+            backup_info["device_config"] = backup_results[0].result
             backup_info["backup_successful"] = True
             backup_info["ssh_used"] = True
             logger.debug("Successfully backed up %s", task.host)
@@ -152,14 +148,14 @@ def backup_cisco_asa(
         # Save the config on the box:
         wr_mem_results = task.run(task=netmiko_save_config)
         if not wr_mem_results[0].failed and "command authorization failed" not in wr_mem_results[0].result.lower():
-            backup_info["write_mem_successful"] = True
+            backup_info["save_config_successful"] = True
             logger.debug("Successfully saved configuration on %s", task.host)
 
     # Attempt to save the backup if we have one
     if backup_info["backup_successful"]:
         backup_info["last_successful_backup"] = datetime.datetime.utcnow().isoformat()
         file_name = pathlib.Path(file_path / f"{str(task.host)}.txt")
-        task.run(task=files.write_file, filename=str(file_name), content=device_config)
+        task.run(task=files.write_file, filename=str(file_name), content=backup_info["device_config"])
     else:
         # If we've failed both backup attempts, log that.
         logger.error("Failed to backup %s via HTTPS or SSH", task.host)
