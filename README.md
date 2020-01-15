@@ -41,7 +41,9 @@ and other libraries update their dependencies.
     * Edit it to include 3.0.0, similar to the below:
         * `Requires-Dist: netmiko (>=2.4.2)`
         * `Requires-Dist: netmiko (>=2.3.3)`
-6. Install Stockpiler:
+6. Install Netmiko 3.0.0 from Develop branch:
+    `pip install -e 'git+https://github.com/ktbyers/netmiko.git@develop#egg=netmiko'`
+7. Install Stockpiler:
     `pip install .`
 
 # Configuration
