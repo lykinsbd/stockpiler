@@ -42,13 +42,13 @@ def main() -> None:
     """
     # Parse Arguments
     args = arg_parsing()
-    log_file = args.logging_dir + "stockpiler.log"
+    log_file = pathlib.Path(args.logging_dir + "stockpiler.log")
     pathlib.Path(log_file).touch()
 
     # Begin Nornir setup
     logging_config = {
         "level": args.log_level,
-        "file": log_file,
+        "file": str(log_file),
         "loggers": ["nornir", "paramiko", "netmiko", "stockpiler"],
     }
     if args.config_file:
@@ -134,9 +134,9 @@ def main() -> None:
     # Process our results into a CSV and write it to the backups directory.
     # print_result(results)
 
-    csv_out = f"{backup_dir}/results.csv"
+    csv_out = pathlib.Path(f"{backup_dir}/results.csv")
     print(f"Putting results into a CSV at { csv_out }")
-    with open(csv_out, "w") as output_file:
+    with csv_out.open(mode="w") as output_file:
         fieldnames = [i for i in next(results[x] for x in results)[0].result.keys() if i not in ["device_config"]]
 
         writer = csv.DictWriter(output_file, fieldnames=fieldnames)
@@ -146,7 +146,7 @@ def main() -> None:
             # Don't try to write this if it's not a dict.
             if not isinstance(results[host][0].result, dict):
                 continue
-            writer.writerow({k:v for (k,v) in results[host][0].result.items() if k not in ["device_config"]})
+            writer.writerow({k: v for (k, v) in results[host][0].result.items() if k not in ["device_config"]})
 
     # Git Commit the changed backup files
     repo.git.add(all=True)  # Should be changed to explicitly add all filenames from the results... but that's harder
