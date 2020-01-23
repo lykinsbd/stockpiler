@@ -1,29 +1,25 @@
 # Stockpiler
-Stockpiler gathers backups of network devices via Nornir, a Python based automation tool.
+Stockpiler gathers backups of network devices via Nornir - a Python based automation tool.
 
 Stockpiler utilizes Nornir, Netmiko, and GitPython for a fully self-contained
- backup solution.
+ backup solution, and has been tested to function on Linux, MacOS, and Windows.
 
-It will read in device inventory/config from `/etc/stockpiler/`, and
- output backups to `/opt/stockpiler/` by default.
+By default, it will read in device inventory/config from `/etc/stockpiler/`, and output backups to `/opt/stockpiler/`.
  Both are configurable by command line arguments.
 
 # Installation
 
-Installation at this time, is from source only,
-Pypi packages will be avalible with 1.0 relase.
+Notes:
 
-## Installation Caveats
-
-1. Stockpiler currently utilizes an upstream/develop branch of Netmiko.
-This requires some specific handling (as outlined below), until Netmiko 3.0.0 is released
-and other libraries update their dependencies.
+1. Stockpiler utilizes a very recent release of Netmiko. This requires some specific handling (as outlined below),
+   until other libraries update their dependencies.
 2. Stockpiler requires Python 3.7 or higher.
+3. Stockpiler utilizes Python Virtual Envrionments for isolation of the code/executable.
 
 ## Installation Steps
 
-1. Clone the code for Stockpiler to a directory:
-    `git clone https://github.com/rackerlabs/stockpiler.git`
+1. Create a directory for the Stockpiler virtual environment:
+    `mkdir stockpiler`
 2. Create a virtual environment in that directory:
     `python3 -m venv stockpiler`
 3. Navigate to the new directory and activate it:
@@ -41,10 +37,10 @@ and other libraries update their dependencies.
     * Edit it to include 3.0.0, similar to the below:
         * `Requires-Dist: netmiko (>=2.4.2)`
         * `Requires-Dist: netmiko (>=2.3.3)`
-6. Install Netmiko 3.0.0 from Develop branch:
-    `pip install -e 'git+https://github.com/ktbyers/netmiko.git@develop#egg=netmiko'`
+6. Install Netmiko >= 3.0.0:
+    `pip install 'netmiko>=3.0.0'`
 7. Install Stockpiler:
-    `pip install .`
+    `pip install stockpiler`
 
 # Configuration
 
@@ -54,3 +50,6 @@ As Stockpiler utilizes Nornir for the underlying inventory and task handling, se
 While we have provided a simple `nornir_conf.yaml` file, you are welcome to provide your own or customize
  the one provided by the package.
 * https://nornir.readthedocs.io/en/latest/configuration/index.html
+
+If you are using Windows (or wish to host your inventory in a different location than `/etc/stockpiler/inventory`), you
+ will need to create a custom Nornir config file with your inventory paths.
