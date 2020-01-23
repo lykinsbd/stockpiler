@@ -25,12 +25,12 @@ logger = getLogger("stockpiler")
 
 
 def backup_cisco_asa(
-    task: Task, file_path: pathlib.Path, backup_command: str = "more system:running-config", proxies: dict = None
+    task: Task, backup_dir: pathlib.Path, backup_command: str = "more system:running-config", proxies: dict = None
 ) -> Result:
     """
     Gather the text configuration from an ASA and write that to a file (overwriting any existing file by that name)
     :param task:
-    :param file_path: An instantiated pathlib.Path object for the directory where we're going to write this
+    :param backup_dir: An instantiated pathlib.Path object for the directory where we're going to write this
     :param backup_command: What command to execute for backup, defaults to `more system:running-config`
     :param proxies: Optional Dict of SOCKS proxies to use for HTTP connectivity
     :return: Return a Nornir Result object.  The Result.result attribute will contain a BackupResults object which is
@@ -154,7 +154,7 @@ def backup_cisco_asa(
     # Attempt to save the backup if we have one
     if backup_info["backup_successful"]:
         backup_info["last_successful_backup"] = datetime.datetime.utcnow().isoformat()
-        file_name = pathlib.Path(file_path / f"{str(task.host)}.txt")
+        file_name = pathlib.Path(backup_dir / f"{str(task.host)}.txt")
         task.run(task=files.write_file, filename=str(file_name), content=backup_info["device_config"])
     else:
         # If we've failed both backup attempts, log that.
