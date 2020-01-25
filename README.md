@@ -1,10 +1,10 @@
 # Stockpiler
-Stockpiler gathers backups of network devices via Nornir - a Python based automation tool.
+Stockpiler gathers network device configurations and stores them in a local Git repository.
 
 Stockpiler utilizes Nornir, Netmiko, and GitPython for a fully self-contained
  backup solution, and has been tested to function on Linux, MacOS, and Windows.
 
-By default, it will read in device inventory/config from `/etc/stockpiler/`, and output backups to `/opt/stockpiler/`.
+By default, it will read in device inventory from `/etc/stockpiler/`, and output backups to `/opt/stockpiler/`.
  Both are configurable by command line arguments.
 
 # Installation
@@ -14,7 +14,7 @@ Notes:
 1. Stockpiler utilizes a very recent release of Netmiko. This requires some specific handling (as outlined below),
    until other libraries update their dependencies.
 2. Stockpiler requires Python 3.7 or higher.
-3. Stockpiler utilizes Python Virtual Envrionments for isolation of the code/executable.
+3. Stockpiler utilizes Python Virtual Environments for isolation of the code/environment.
 
 ## Installation Steps
 
@@ -37,9 +37,7 @@ Notes:
     * Edit it to include 3.0.0, similar to the below:
         * `Requires-Dist: netmiko (>=2.4.2)`
         * `Requires-Dist: netmiko (>=2.3.3)`
-6. Install Netmiko >= 3.0.0:
-    `pip install 'netmiko>=3.0.0'`
-7. Install Stockpiler:
+6. Install Stockpiler:
     `pip install stockpiler`
 
 # Configuration
