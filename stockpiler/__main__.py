@@ -28,8 +28,8 @@ from yaml import safe_load
 from yaml.constructor import ConstructorError
 
 
-from stockpiler.processors.process_backups import ProcessBackups
-from stockpiler.tasks.device_backup import backup_cisco_asa
+from stockpiler.processors.process_stockpiles import ProcessStockpiles
+from stockpiler.tasks.stockpile import stockpile_cisco_asa
 
 
 logger = getLogger("stockpiler")
@@ -65,10 +65,10 @@ def main() -> None:
             proxies = {"https": f"socks5://{args.proxy}", "http": f"socks5://{args.proxy}"}
         backup_dir = pathlib.Path(args.output or "/opt/stockpiler/")
 
-        bu_targets = filtered_norns.with_processors(processors=[ProcessBackups()])
+        stockpile_targets = filtered_norns.with_processors(processors=[ProcessStockpiles()])
 
-        # Executing backup on devices:
-        bu_targets.run(task=backup_cisco_asa, proxies=proxies, backup_dir=backup_dir)
+        # Executing stockpile of device configurations:
+        stockpile_targets.run(task=stockpile_cisco_asa, proxies=proxies, backup_dir=backup_dir)
 
     sys.exit()
 

@@ -8,10 +8,34 @@ from datetime import datetime
 from typing import Dict, Optional, Union
 
 
-class BackupResults(Dict[str, Union[bool, int, str]]):
+from nornir.core.task import Result, Task
+
+
+# Maps Netmiko "device_type" to our Stockpiler task.
+StockpileMap = {""}
+
+
+class StockpileResults(Dict[str, Union[bool, int, str]]):
 
     """
     A Dict like object to hold the results of a backup attempt
+
+    Example:
+    {
+        "ip": "123.123.123.123",
+        "hostname": "fw_Fw_FW",
+        "http_mgmt_port": 8443,
+        "http_port_check_ok": True,
+        "ssh_mgmt_port": 22,
+        "ssh_port_check_ok": True,
+        "backup_successful": True,
+        "save_config_successful": True,
+        "http_used": True,
+        "ssh_used": False,
+        "last_backup_attempt": 2020-01-25T13:25:53.540015,
+        "last_successful_backup": None,
+        "device_config": None,
+    }
     """
 
     def __init__(
@@ -34,7 +58,7 @@ class BackupResults(Dict[str, Union[bool, int, str]]):
         **kwargs: Union[bool, int, str],
     ) -> None:
         """
-        Initialize a BackupResults object to hold our backup results
+        Initialize a StockpileResults object to hold our backup results
         :param name: A name for this object, usually will be the `task.host` from Nornir inventory plus _backup
         :param ip: IP address of the device we attempted to backup
         :param hostname: Hostname of the device we attempted to backup, usually the output of task.host
@@ -61,3 +85,7 @@ class BackupResults(Dict[str, Union[bool, int, str]]):
 
     def __repr__(self) -> str:
         return "{} ({}): {}".format(self.__class__.__name__, self.name, super().__repr__())
+
+
+def stockpile_device_config(task: Task) -> Result:
+    pass
