@@ -17,7 +17,7 @@ from nornir.plugins.tasks.apis import http_method
 from nornir.plugins.tasks.networking import netmiko_save_config, netmiko_send_command, tcp_ping
 
 
-from stockpiler.tasks.stockpile import StockpileResults
+from stockpiler.tasks.stockpile.stockpile_results import StockpileResults
 
 
 logger = getLogger("stockpiler")

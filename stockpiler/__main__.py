@@ -29,7 +29,7 @@ from yaml.constructor import ConstructorError
 
 
 from stockpiler.processors.process_stockpiles import ProcessStockpiles
-from stockpiler.tasks.stockpile import stockpile_cisco_asa
+from stockpiler.tasks.stockpile.stockpile_base import stockpile_device_config
 
 
 logger = getLogger("stockpiler")
@@ -63,12 +63,12 @@ def main() -> None:
         proxies = None
         if args.proxy:
             proxies = {"https": f"socks5://{args.proxy}", "http": f"socks5://{args.proxy}"}
-        backup_dir = pathlib.Path(args.output or "/opt/stockpiler/")
+        stockpile_directory = pathlib.Path(args.output or "/opt/stockpiler/")
 
         stockpile_targets = filtered_norns.with_processors(processors=[ProcessStockpiles()])
 
         # Executing stockpile of device configurations:
-        stockpile_targets.run(task=stockpile_cisco_asa, proxies=proxies, backup_dir=backup_dir)
+        stockpile_targets.run(task=stockpile_device_config, proxies=proxies, stockpile_directory=stockpile_directory)
 
     sys.exit()
 
@@ -90,7 +90,7 @@ def arg_parsing() -> Namespace:
         "--ssh_config_file", type=str, help="Provide an SSH config file, default is packaged with this tool."
     )
     argparser.add_argument(
-        "-o", "--output", type=str, help="Provide a directory to output device backups to, default '/opt/stockpiler'"
+        "-o", "--output", type=str, help="Provide an output directory for our stockpile, default '/opt/stockpiler'"
     )
     argparser.add_argument("-p", "--proxy", type=str, help="'host:port' for a Socks Proxy to use for connectivity.")
     argparser.add_argument(
@@ -131,7 +131,7 @@ def nornir_initialize(args: Namespace) -> Nornir:
     :return:
     """
 
-    log_file = pathlib.Path(args.logging_dir + "stockpiler.log")
+    log_file = pathlib.Path(pathlib.Path(args.logging_dir) / "stockpiler.log")
     pathlib.Path(log_file).touch()
 
     logging_config = {

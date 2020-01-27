@@ -52,14 +52,14 @@ class ProcessStockpiles(Processor):
         :return:
         """
 
-        # Process our results into a CSV and write it to the backups directory.
+        # Process our results into a CSV and write it to the stockpile output directory.
 
         task_end_time = datetime.datetime.utcnow()
         print(f"Backup Task End Time: {task_end_time.isoformat()}")
         print(f"Backup Task Elapsed Time: {task_end_time - self.task_start_time}")
 
         # Plumb up Git repository
-        repo = self.git_initialize(stockpile_directory=task.params["backup_dir"])
+        repo = self.git_initialize(stockpile_directory=task.params["stockpile_directory"])
         author = Actor(name="Stockpiler", email="stockpiler@localhost.local")
 
         csv_out = pathlib.Path(f"{task.params['stockpile_directory']}/results.csv")
