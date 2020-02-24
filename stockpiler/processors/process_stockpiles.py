@@ -10,6 +10,7 @@ import csv
 import datetime
 import logging
 import pathlib
+import threading
 
 
 from git import Actor, Repo
@@ -29,6 +30,7 @@ class ProcessStockpiles(Processor):
         """
 
         self.task_start_time = datetime.datetime.utcnow()
+        self.lock = threading.Lock()
         super().__init__(**kwargs)
 
     def task_started(self, task: Task) -> None:
@@ -93,7 +95,9 @@ class ProcessStockpiles(Processor):
         :param result:
         :return:
         """
+        self.lock.acquire()
         print(f"  - {host.name}: Stockpile {'Failed' if result.failed else 'Successful'}")
+        self.lock.release()
 
     def subtask_instance_started(self, task: Task, host: Host) -> None:
         pass  # This is required for implementation, but at this time we're taking no action here
