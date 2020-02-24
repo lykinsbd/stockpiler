@@ -99,7 +99,7 @@ def arg_parsing() -> Namespace:
         help="Enable user prompt to provide custom credentials, otherwise will only try environment variables of"
         " STOCKPILER_USER and STOCKPILER_PW.",
     )
-    argparser.add_argument("-a", "--addresses", type=int, nargs="+", help="1 (or more) IP Address, space separated.")
+    argparser.add_argument("-a", "--addresses", type=str, nargs="+", help="1 (or more) IP Address, space separated.")
     command_group = argparser.add_argument_group("command/config")
     command_group.add_argument("--command", type=str, help="1 command to execute on the selected devices.")
     command_group.add_argument(
