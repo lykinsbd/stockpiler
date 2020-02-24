@@ -30,13 +30,10 @@ Notes:
  environment:
     * Paths should be similar to:
         * `lib/python3.7/site-packages/napalm-2.5.0.dist-info/METADATA`
-        * `lib/python3.7/site-packages/nornir-2.3.0.dist-info/METADATA`
     * In each file, find the lines similar to below that reference Netmiko:
         * `Requires-Dist: netmiko (==2.4.2)`
-        * `Requires-Dist: netmiko (>=2.3.3,<3.0.0)`
     * Edit it to include 3.0.0, similar to the below:
         * `Requires-Dist: netmiko (>=2.4.2)`
-        * `Requires-Dist: netmiko (>=2.3.3)`
 6. Install Stockpiler:
     `pip install stockpiler`
 
