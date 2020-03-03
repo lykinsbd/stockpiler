@@ -33,7 +33,7 @@ See `stockpiler --help` for full command information.
 
 ### Credentials
 
-By default, Stockpiler will look in the follwoing three Environment Variables for the username/password/enable_password to use:
+By default, Stockpiler will look in the following three Environment Variables for the username/password/enable_password to use:
 
 * `STOCKPILER_USER`
 * `STOCKPILER_PW`
@@ -41,10 +41,22 @@ By default, Stockpiler will look in the follwoing three Environment Variables fo
 
 Note that if `STOCKPILER_ENABLE` is not set, Stockpiler will utilize the `STOCKPILER_PW` for both values.
 
-In addition, if these values are not set, you must tell Stockpiler to prompt you for credentials with the argument
- `--prompt_for_credentials`.  By default **it will not do so, as it is intended to be run in a non-interactive scenario**,
-  i.e. by a Cron job, and will simply raise an IOError and exit.
+In addition, if these values are not set, you must tell Stockpiler to either locate a file with credentials, to prompt
+ you for credentials, or to use the credentials in the Nornir inventory.
+ By default **it will not do so, as it is intended to be run in a non-interactive scenario**, i.e. by a Cron job,
+ and will simply raise an IOError and exit.
 
+To propmt for credentials, supply the command line argument `--credential_prompt`.
+
+To provide a file with the credential values, supply the command line argument `--credential_file <file path>`.
+ This file must only be readable by the user executing Stockpiler, and must be Base 64 encoded with the original
+ contents in the following format, otherwise Stockpiler will raise an IOError.
+
+    STOCKPILER_USER:USERNAME
+    STOCKPILER_PW:PASSWORD
+    STOCKPILER_ENABLE:PASSWORD
+
+To utilize the Nornir Inventory credentials, supply the command line argument `--credential_from_inventory`.
 
 ### Configuration
 

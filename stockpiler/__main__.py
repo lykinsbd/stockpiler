@@ -16,7 +16,7 @@ from logging import getLogger
 import os
 import pathlib
 import sys
-from typing import Tuple
+from typing import Optional, Tuple
 
 
 from nornir import InitNornir
@@ -94,10 +94,22 @@ def arg_parsing() -> Namespace:
     )
     argparser.add_argument("-p", "--proxy", type=str, help="'host:port' for a Socks Proxy to use for connectivity.")
     argparser.add_argument(
-        "--prompt_for_credentials",
+        "--credential_prompt",
         action="store_true",
-        help="Enable user prompt to provide custom credentials, otherwise will only try environment variables of"
+        help="Enable user prompt to provide custom credentials, default will try environment variables of"
         " STOCKPILER_USER and STOCKPILER_PW.",
+    )
+    argparser.add_argument(
+        "--credential_file",
+        nargs="?",
+        default="/opt/stockpiler/credentials.b64",
+        help="Provide a Base64 encoded file with `STOCKPILER_USER:USERNAME and STOCKPILER_PW:PASSWORD` that is readable"
+        "to this user only.",
+    ),
+    argparser.add_argument(
+        "--credential_from_inventory",
+        action="store_true",
+        help="Utilize the Credential information in the configured Nornir Inventory.",
     )
     argparser.add_argument("-a", "--addresses", type=str, nargs="+", help="1 (or more) IP Address, space separated.")
     command_group = argparser.add_argument_group("command/config")
@@ -170,35 +182,58 @@ def nornir_initialize(args: Namespace) -> Nornir:
     logger.info("Reading config file and initializing inventory...")
     norns = InitNornir(config_file=config_file, logging=logging_config, ssh={"config_file": ssh_config_file})
 
-    # Gather credentials:
-    username, password, enable = gather_credentials(prompt_for_credentials=args.prompt_for_credentials)
+    # Check if we need to gather credentials or not:
+    if not args.credential_from_inventory:
+        # Gather credentials:
+        username, password, enable = gather_credentials(prompt_for_credentials=args.prompt_for_credentials)
 
-    # Set these into the inventory:
-    norns.inventory.defaults.username = username
-    norns.inventory.defaults.password = password
+        # Set these into the inventory:
+        norns.inventory.defaults.username = username
+        norns.inventory.defaults.password = password
 
-    # If there is no Enable, set it to the same as the password.
-    norns.inventory.defaults.connection_options["netmiko"] = ConnectionOptions(extras={"secret": enable or password})
+        # If there is no Enable, set it to the same as the password.
+        norns.inventory.defaults.connection_options["netmiko"] = ConnectionOptions(
+            extras={"secret": enable or password}
+        )
 
     return norns
 
 
-def gather_credentials(prompt_for_credentials: bool = False) -> Tuple[str, str, str]:
+def gather_credentials(
+    prompt_for_credentials: bool = False, credential_file: "Optional[str]" = None
+) -> Tuple[str, str, str]:
     """
     Gather needed credentials for backing up these devices.
     :param prompt_for_credentials: If set to True, Stockpiler will attempt to gather credentials from the CLI,
         normally it will only use environment variables.  This is useful in interactive applications.
+    :param credential_file: Read the credentials from this B64 encoded file.  Looking for the KV pairs of:
+        STOCKPILER_USER:USERNAME
+        STOCKPILER_PW:PASSWORD
+        STOCKPILER_ENABLE:PASSWORD
     :return: A Tuple of username, password, and enable.
     """
     username = os.environ.get("STOCKPILER_USER", None)
     password = os.environ.get("STOCKPILER_PW", None)
     enable = os.environ.get("STOCKPILER_ENABLE", None)
-    if username is None and password is None and not prompt_for_credentials:
+    if username is None and password is None and not prompt_for_credentials and credential_file is None:
         raise IOError("No credentials have been provided!")
-    if username is None:
+    if prompt_for_credentials:
         username = input("Please provide a username for backup execution: ")
-    if password is None:
         password = getpass.getpass("Please provide a password for backup execution: ")
+        enable = password
+    elif credential_file is not None:
+        credential_path = pathlib.Path(credential_file)
+        if not credential_path.is_file():
+            raise IOError(f"{credential_file} is not found!")
+        if credential_path.owner() != getpass.getuser():
+            raise IOError(f"{credential_file} is not owned by user `{getpass.getuser()}`!")
+        # Gather the file permissions of the credential file:
+        credential_permissions = oct(credential_path.stat()[0][-3:])
+        if int(credential_permissions[1]) > 0 or int(credential_permissions[2]) > 0:
+            raise IOError(
+                f"{credential_file} has bad permissions: `{credential_permissions}`. Please restrict to only"
+                f" {getpass.getuser()}"
+            )
 
     return username, password, enable
 
