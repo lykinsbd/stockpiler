@@ -1,6 +1,5 @@
 # Stockpiler
-<img style="float: left" src="stockpiler_logo_200x200.png" alt="Stockpiler logo">
-Stockpiler gathers network device configurations and stores them in a local Git repository.
+<img style="float: left" src="stockpiler_logo_200x200.png" alt="Stockpiler logo"> Stockpiler gathers network device configurations and stores them in a local Git repository.
 
 Stockpiler utilizes Nornir, Netmiko, and GitPython for a fully self-contained
  backup solution, and has been tested to function on Linux, MacOS, and Windows.
