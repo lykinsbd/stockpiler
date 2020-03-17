@@ -11,6 +11,7 @@ import pathlib
 from urllib.parse import quote_plus
 
 
+from f5.bigip import ManagementRoot
 from nornir.core.task import Result, Task
 from nornir.plugins.tasks import files
 from nornir.plugins.tasks.apis import http_method
