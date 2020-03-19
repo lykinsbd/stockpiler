@@ -4,6 +4,18 @@ Stockpiler gathers network device configurations and stores them in a local Git 
 Stockpiler utilizes Nornir, Netmiko, and GitPython for a fully self-contained
  backup solution, and has been tested to function on Linux, MacOS, and Windows.
 
+## Supported Platforms
+
+Today, Stockpiler can back up any Cisco IOS-like device that understands the `more system:running-config` command.
+This includes devices running these operating systems:
+
+* Cicso IOS
+* Cisco IOS-XE
+* Cisco ASA OS
+* Cisco Nexus OS
+
+Further device support can be easily added as needed by creating additional Nornir Tasks for them.
+
 ## Using Stockpiler
 
 Once installed in an environment Stockpiler can be called directly/ad-hoc, or more commonly, by a Cron Job or other 
