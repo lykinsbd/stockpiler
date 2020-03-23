@@ -144,7 +144,29 @@ def nornir_initialize(args: Namespace) -> Nornir:
     """
 
     log_file = pathlib.Path(pathlib.Path(args.logging_dir) / "stockpiler.log")
-    pathlib.Path(log_file).touch()
+
+    # A directory in the path doesn't exist, this can happen with the default logging path of `/var/log/stockpiler/`
+    if not log_file.parent.exists():
+        try:
+            log_file.parent.mkdir(parents=True)
+        except PermissionError:
+            sys_user = getpass.getuser()
+            print(
+                "\nERROR: Unable to create parent log directories!"
+                f"\nYou may have to manually do this with 'sudo mkdir -p {str(log_file.parent)};"
+                f"sudo chown {sys_user}:{sys_user} {str(log_file.parent)}'\n"
+            )
+            sys.exit(1)
+
+    # Ensure the logfile is able to be written to.
+    try:
+        log_file.touch()
+    except PermissionError:
+        print(
+            f"\nERROR: Unable to access the log file at {str(log_file)}"
+            f" please check permissions on the file/directory!\n"
+        )
+        sys.exit(1)
 
     logging_config = {
         "level": args.log_level,
@@ -185,7 +207,9 @@ def nornir_initialize(args: Namespace) -> Nornir:
     # Check if we need to gather credentials or not:
     if not args.credential_from_inventory:
         # Gather credentials:
-        username, password, enable = gather_credentials(prompt_for_credentials=args.prompt_for_credentials)
+        username, password, enable = gather_credentials(
+            credential_prompt=args.credential_prompt, credential_file=args.credential_file
+        )
 
         # Set these into the inventory:
         norns.inventory.defaults.username = username
@@ -200,11 +224,11 @@ def nornir_initialize(args: Namespace) -> Nornir:
 
 
 def gather_credentials(
-    prompt_for_credentials: bool = False, credential_file: "Optional[str]" = None
+    credential_prompt: bool = False, credential_file: "Optional[str]" = None
 ) -> Tuple[str, str, str]:
     """
     Gather needed credentials for backing up these devices.
-    :param prompt_for_credentials: If set to True, Stockpiler will attempt to gather credentials from the CLI,
+    :param credential_prompt: If set to True, Stockpiler will attempt to gather credentials from the CLI,
         normally it will only use environment variables.  This is useful in interactive applications.
     :param credential_file: Read the credentials from this B64 encoded file.  Looking for the KV pairs of:
         STOCKPILER_USER:USERNAME
@@ -215,9 +239,9 @@ def gather_credentials(
     username = os.environ.get("STOCKPILER_USER", None)
     password = os.environ.get("STOCKPILER_PW", None)
     enable = os.environ.get("STOCKPILER_ENABLE", None)
-    if username is None and password is None and not prompt_for_credentials and credential_file is None:
+    if username is None and password is None and not credential_prompt and credential_file is None:
         raise IOError("No credentials have been provided!")
-    if prompt_for_credentials:
+    if credential_prompt:
         username = input("Please provide a username for backup execution: ")
         password = getpass.getpass("Please provide a password for backup execution: ")
         enable = password
@@ -228,7 +252,7 @@ def gather_credentials(
         if credential_path.owner() != getpass.getuser():
             raise IOError(f"{credential_file} is not owned by user `{getpass.getuser()}`!")
         # Gather the file permissions of the credential file:
-        credential_permissions = oct(credential_path.stat()[0][-3:])
+        credential_permissions = oct(credential_path.stat()[0])[-3:]
         if int(credential_permissions[1]) > 0 or int(credential_permissions[2]) > 0:
             raise IOError(
                 f"{credential_file} has bad permissions: `{credential_permissions}`. Please restrict to only"
@@ -250,7 +274,7 @@ def filtering(args: Namespace, norns: Nornir) -> Nornir:
     print("Filtering Target Hosts")
 
     def is_cli_selected_host(host):
-        return host.data["ip"] in args.addresses
+        return host.hostname in args.addresses
 
     if args.addresses:
         return norns.filter(filter_func=is_cli_selected_host)
