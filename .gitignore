@@ -110,3 +110,6 @@ bin/
 
 # Pycharm
 .idea/
+
+# iPython installed manfiles
+share/

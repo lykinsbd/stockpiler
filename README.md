@@ -1,8 +1,20 @@
-# Stockpiler
+# ![Stockpiler Logo](stockpiler_logo_200x200.png)
 Stockpiler gathers network device configurations and stores them in a local Git repository.
 
 Stockpiler utilizes Nornir, Netmiko, and GitPython for a fully self-contained
  backup solution, and has been tested to function on Linux, MacOS, and Windows.
+
+## Supported Platforms
+
+Today, Stockpiler can back up any Cisco IOS-like device that understands the `more system:running-config` command.
+This includes devices running these operating systems:
+
+* Cicso IOS
+* Cisco IOS-XE
+* Cisco ASA OS
+* Cisco Nexus OS
+
+Further device support can be easily added as needed by creating additional Nornir Tasks for them.
 
 ## Using Stockpiler
 
@@ -33,7 +45,7 @@ See `stockpiler --help` for full command information.
 
 ### Credentials
 
-By default, Stockpiler will look in the follwoing three Environment Variables for the username/password/enable_password to use:
+By default, Stockpiler will look in the following three Environment Variables for the username/password/enable_password to use:
 
 * `STOCKPILER_USER`
 * `STOCKPILER_PW`
@@ -41,10 +53,22 @@ By default, Stockpiler will look in the follwoing three Environment Variables fo
 
 Note that if `STOCKPILER_ENABLE` is not set, Stockpiler will utilize the `STOCKPILER_PW` for both values.
 
-In addition, if these values are not set, you must tell Stockpiler to prompt you for credentials with the argument
- `--prompt_for_credentials`.  By default **it will not do so, as it is intended to be run in a non-interactive scenario**,
-  i.e. by a Cron job, and will simply raise an IOError and exit.
+In addition, if these values are not set, you must tell Stockpiler to either locate a file with credentials, to prompt
+ you for credentials, or to use the credentials in the Nornir inventory.
+ By default **it will not do so, as it is intended to be run in a non-interactive scenario**, i.e. by a Cron job,
+ and will simply raise an IOError and exit.
 
+To propmt for credentials, supply the command line argument `--credential_prompt`.
+
+To provide a file with the credential values, supply the command line argument `--credential_file <file path>`.
+ This file must only be readable by the user executing Stockpiler, and must be Base 64 encoded with the original
+ contents in the following format, otherwise Stockpiler will raise an IOError.
+
+    STOCKPILER_USER:USERNAME
+    STOCKPILER_PW:PASSWORD
+    STOCKPILER_ENABLE:PASSWORD
+
+To utilize the Nornir Inventory credentials, supply the command line argument `--credential_from_inventory`.
 
 ### Configuration
 
@@ -65,10 +89,10 @@ If you are using Windows (or wish to host your inventory in a different location
 
 Notes:
 
-1. Stockpiler utilizes a very recent release of Netmiko. This requires some specific handling (as outlined below),
-   until other libraries update their dependencies.
-2. Stockpiler **requires Python 3.7 or higher**.
-3. Stockpiler utilizes Python Virtual Environments for isolation of the code/environment.
+1. Stockpiler **requires Python 3.7 or higher**.
+2. Stockpiler utilizes Python Virtual Environments for isolation of the code/environment.
+3. Stockpiler utilizes a very recent release of Netmiko. This requires some specific handling (as outlined below),
+   until Napalm updates their dependencies in napalm>=3.0.0.
 
 ### Installation Steps
 
