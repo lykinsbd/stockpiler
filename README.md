@@ -91,6 +91,8 @@ Notes:
 
 1. Stockpiler **requires Python 3.7 or higher**.
 2. Stockpiler utilizes Python Virtual Environments for isolation of the code/environment.
+3. Stockpiler utilizes a very recent release of Netmiko. This requires some specific handling (as outlined below),
+   until Napalm updates their dependencies in napalm>=3.0.0.
 
 ### Installation Steps
 
@@ -102,3 +104,11 @@ Notes:
     `cd stockpiler;source bin/activate`
 4. Install Stockpiler:
     `pip install stockpiler`
+5. Edit the dependencies, this will require you to find the Napalm and Nornir `METADATA` files in your virtual
+ environment:
+    * Paths should be similar to:
+        * `lib/python3.7/site-packages/napalm-2.5.0.dist-info/METADATA`
+    * In each file, find the lines similar to below that reference Netmiko:
+        * `Requires-Dist: netmiko (==2.4.2)`
+    * Edit it to include 3.0.0, similar to the below:
+        * `Requires-Dist: netmiko (>=2.4.2)`
