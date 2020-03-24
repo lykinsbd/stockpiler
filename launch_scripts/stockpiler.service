@@ -5,7 +5,7 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-User=nsadmin
+User=sample_user
 ExecStart=/usr/local/bin/stockpiler
 
 [Install]
