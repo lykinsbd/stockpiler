@@ -1,7 +1,6 @@
 [Unit]
 Description=Stockpiler Net Device Backups
 After=network.target
-StartLimitIntervalSec=0
 
 [Service]
 Type=simple
