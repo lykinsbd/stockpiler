@@ -10,6 +10,7 @@ Requires Python 3.7 or higher.
 """
 
 from argparse import ArgumentParser, Namespace
+import base64
 import getpass
 import importlib.resources
 from logging import getLogger
@@ -103,8 +104,8 @@ def arg_parsing() -> Namespace:
         "--credential_file",
         nargs="?",
         default="/opt/stockpiler/credentials.b64",
-        help="Provide a Base64 encoded file with `STOCKPILER_USER:USERNAME and STOCKPILER_PW:PASSWORD` that is readable"
-        "to this user only.",
+        help="Provide a Base64 encoded file with `STOCKPILER_USER:USERNAME\\nSTOCKPILER_PW:PASSWORD`"
+        " (`\\nSTOCKPILER_EN:ENABLE` optional) on their own lines, that is readable to this user only.",
     ),
     argparser.add_argument(
         "--credential_from_inventory",
@@ -257,6 +258,23 @@ def gather_credentials(
             raise IOError(
                 f"{credential_file} has bad permissions: `{credential_permissions}`. Please restrict to only"
                 f" {getpass.getuser()}"
+            )
+        # Read the file, decode and split them into a list of ["STOCKPILER_USER:abc", "STOCKPILER_PW:def"]
+        creds_b64 = credential_path.read_text()
+        creds = base64.b64decode(creds_b64).decode().split()
+
+        # Look at the list and split each entry into the un/credential (after the initial ":")
+        if len(creds) == 3:
+            username = creds[0].split(":", maxsplit=1)[1]
+            password = creds[1].split(":", maxsplit=1)[1]
+            enable = creds[2].split(":", maxsplit=1)[1]
+        elif len(creds) == 2:
+            username = creds[0].split(":", maxsplit=1)[1]
+            password = creds[1].split(":", maxsplit=1)[1]
+            enable = password
+        else:
+            raise IOError(
+                f"{credential_file} is not able to be parsed into STOCKPILER_USER:username\\nSTOCKPILER_PW:password"
             )
 
     return username, password, enable
