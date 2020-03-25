@@ -11,6 +11,7 @@ Requires Python 3.7 or higher.
 
 from argparse import ArgumentParser, Namespace
 import base64
+import binascii
 import getpass
 import importlib.resources
 from logging import getLogger
@@ -239,7 +240,7 @@ def gather_credentials(
     """
     username = os.environ.get("STOCKPILER_USER", None)
     password = os.environ.get("STOCKPILER_PW", None)
-    enable = os.environ.get("STOCKPILER_ENABLE", None)
+    enable = os.environ.get("STOCKPILER_ENABLE", None) or password
     if username is None and password is None and not credential_prompt and credential_file is None:
         raise OSError("No credentials have been provided!")
     if credential_prompt:
@@ -261,7 +262,10 @@ def gather_credentials(
             )
         # Read the file, decode and split them into a list of ["STOCKPILER_USER:abc", "STOCKPILER_PW:def"]
         creds_b64 = credential_path.read_text()
-        creds = base64.b64decode(creds_b64).decode().split()
+        try:
+            creds = base64.b64decode(creds_b64).decode().split()
+        except binascii.Error:
+            raise OSError(f"{credential_file} does not appear to be Base64 encoded, please check and try again!")
 
         # Look at the list and split each entry into the un/credential (after the initial ":")
         if len(creds) == 3:
