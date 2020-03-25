@@ -241,7 +241,7 @@ def gather_credentials(
     password = os.environ.get("STOCKPILER_PW", None)
     enable = os.environ.get("STOCKPILER_ENABLE", None)
     if username is None and password is None and not credential_prompt and credential_file is None:
-        raise IOError("No credentials have been provided!")
+        raise OSError("No credentials have been provided!")
     if credential_prompt:
         username = input("Please provide a username for backup execution: ")
         password = getpass.getpass("Please provide a password for backup execution: ")
@@ -249,13 +249,13 @@ def gather_credentials(
     elif credential_file is not None:
         credential_path = pathlib.Path(credential_file)
         if not credential_path.is_file():
-            raise IOError(f"{credential_file} is not found!")
+            raise OSError(f"{credential_file} is not found!")
         if credential_path.owner() != getpass.getuser():
-            raise IOError(f"{credential_file} is not owned by user `{getpass.getuser()}`!")
+            raise OSError(f"{credential_file} is not owned by user `{getpass.getuser()}`!")
         # Gather the file permissions of the credential file:
         credential_permissions = oct(credential_path.stat()[0])[-3:]
         if int(credential_permissions[1]) > 0 or int(credential_permissions[2]) > 0:
-            raise IOError(
+            raise OSError(
                 f"{credential_file} has bad permissions: `{credential_permissions}`. Please restrict to only"
                 f" {getpass.getuser()}"
             )
@@ -273,7 +273,7 @@ def gather_credentials(
             password = creds[1].split(":", maxsplit=1)[1]
             enable = password
         else:
-            raise IOError(
+            raise OSError(
                 f"{credential_file} is not able to be parsed into STOCKPILER_USER:username\\nSTOCKPILER_PW:password"
             )
 

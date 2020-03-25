@@ -56,13 +56,13 @@ Note that if `STOCKPILER_ENABLE` is not set, Stockpiler will utilize the `STOCKP
 In addition, if these values are not set, you must tell Stockpiler to either locate a file with credentials, to prompt
  you for credentials, or to use the credentials in the Nornir inventory.
  By default **it will not do so, as it is intended to be run in a non-interactive scenario**, i.e. by a Cron job,
- and will simply raise an IOError and exit.
+ and will simply raise an OSError and exit.
 
 To propmt for credentials, supply the command line argument `--credential_prompt`.
 
 To provide a file with the credential values, supply the command line argument `--credential_file <file path>`.
  This file must only be readable by the user executing Stockpiler, and must be Base 64 encoded with the original
- contents in the following format, otherwise Stockpiler will raise an IOError.
+ contents in the following format, otherwise Stockpiler will raise an OSError.
 
     STOCKPILER_USER:USERNAME
     STOCKPILER_PW:PASSWORD
