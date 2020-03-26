@@ -99,18 +99,14 @@ class TestGatherCredentials(fake_filesystem_unittest.TestCase):
             # Create credential file in filesystem
             self.fs.create_file(file_path=self.file_path, contents=self.full_credential_string, st_mode=0o100600)
             # Test it
-            self.assertEqual(
-                gather_credentials(credential_file=self.file_path), self.credential_full_tuple
-            )
+            self.assertEqual(gather_credentials(credential_file=self.file_path), self.credential_full_tuple)
 
         # Test Partial configuration file
         with self.subTest(msg="Checking partial credential file..."):
             # Delete our fake file for the next test
             self.fs.remove_object(file_path=self.file_path)
             self.fs.create_file(file_path=self.file_path, contents=self.partial_credential_string, st_mode=0o100600)
-            self.assertEqual(
-                gather_credentials(credential_file=self.file_path), self.credential_partial_tuple
-            )
+            self.assertEqual(gather_credentials(credential_file=self.file_path), self.credential_partial_tuple)
 
         # Test existing, but empty credential file
         with self.subTest(msg="Checking empty credential file..."):
