@@ -1,0 +1,11 @@
+[Unit]
+Description=Stockpiler Net Device Backups
+After=network.target
+
+[Service]
+Type=simple
+User=sample_user
+ExecStart=/usr/local/bin/stockpiler
+
+[Install]
+WantedBy=multi-user.target
